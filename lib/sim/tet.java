@@ -14,45 +14,61 @@
 /*  limitations under the License.                                          */
 /*--------------------------------------------------------------------------*/
 
-/* initial C++ runtime
+/* initial C++ runtime*/
+package sim;
 
-struct engine;
-struct proc;
-struct chan;
-
+/*
 struct event{
 	double time;
 	enum{ CHAN, PROC0, PROC1 } type;
 	chan*c;
 	proc*p;
-};
+};*/
 
-class cmp{ public: bool operator()(const event&t1, const event&t2){ return t1.time > t2.time; } };
+	class event {
+			double time;
+			enum type { //TODO проверить оформление
+				CHAN, PROC0,PROC1
+			}
+			chan c;
+			proc p;
+		}
 
+/*
+class cmp{ public: bool operator()(const event&t1, const event&t2){ return t1.time > t2.time; } };*/
+	class cmp{
+		public boolean operator(event t1, event t2){
+			//final event t1, t2; //параметры или локальные переменные?
+			return  t1.time > t2.time;
+		}
+	}
+/*	
 struct engine{
 	std::priority_queue<event, std::vector<event>, cmp> calendar;
 	double Tp;
 	double T1;
 	int Pmax;
-};
+};*/
 
+
+/*
 struct proc{
 	bool lck;
 	std::queue<chan*> ready;
 	void(*recv)(chan*, proc*);
-};
-
+};*/
+/*
 struct chan{
 	proc*p;
 	bool sending;
-};
-
+};*/
+/*
 inline void duration(engine*e, double t)
 {
 	e->T1 += t;
 	e->Tp += t;
-}
-
+}*/
+/*
 inline void send(engine*e, chan*c, proc*p)
 {
 	if (c->sending) return;
@@ -61,13 +77,13 @@ inline void send(engine*e, chan*c, proc*p)
 	event ev;
 	ev.time = e->Tp; ev.type = event::CHAN; ev.c = c;
 	e->calendar.push(ev);
-}
-
+}*/
+/*
 inline bool access(chan*c, proc*p)
 {
 	return c->p == p && !c->sending;
-}
-
+}*/
+/*
 inline void run(engine*e, int n = 1)
 {
 	proc*p = 0; chan*c = 0;
@@ -121,8 +137,8 @@ inline void run(engine*e, int n = 1)
 		}
 	}
 	e->Tp = Tcur; e->Pmax = Pmax;
-}
-
+}*/
+/*
 inline void stat(engine*e, double&T1, double&Tp, int&Pmax, double&Smax, int P, double&Sp)
 {
 	T1 = e->T1; Tp = e->Tp; Pmax = e->Pmax;
@@ -132,3 +148,4 @@ inline void stat(engine*e, double&T1, double&Tp, int&Pmax, double&Smax, int P, d
 }
 
 */
+}
