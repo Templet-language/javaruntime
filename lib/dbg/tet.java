@@ -40,7 +40,7 @@ struct proc{
     void(*recv)(chan*, proc*);
 };*/
 
-    class proc {
+    abstract class proc {
         public abstract void recv(chan chan, proc proc);
     }
 
@@ -102,10 +102,12 @@ inline bool access(chan*c, proc*p) {
         long rsize = 0;
         while (rsize == e.ready.size()) {
             int n = (int) ((Math.random() * RAND_MAX) % rsize);
-            //взять первый элемент  e.ready...
-
+            chan it = (chan) e.ready.iterator(); //+ n; //TODO не ясна конструкция
+            chan c = it;
+            e.ready.remove(it);
+            c.sending=false;
+            c.p.recv(c,c.p);
         }
-
     }
 
 
