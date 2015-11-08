@@ -14,7 +14,7 @@
 /*  limitations under the License.                                          */
 /*--------------------------------------------------------------------------*/
 
-/* initial C++ runtime
+/* initial C++ runtime*/
 
 package par;
 
