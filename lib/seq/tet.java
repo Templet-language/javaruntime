@@ -14,46 +14,41 @@
 /*  limitations under the License.                                          */
 /*--------------------------------------------------------------------------*/
 
-/* initial C++ runtime
-struct engine;
-struct proc;
-struct chan;
+package seq;
+import java.util.Queue;
 
-struct engine{
-	std::queue<chan*> ready;
-};
+public class tet {
+	class Engine {
+		private Queue<Message> ready;
+	}
 
-struct proc{
-	void(*recv)(chan*, proc*);
-};
+	abstract class Actor {
+		public abstract void recv(Message message, Actor actor);
+	}
 
-struct chan{
-	proc*p;
-	bool sending;
-};
+	class Message {
+		private Actor actor;
+		private boolean sending;
+	}
 
-inline void duration(engine*e, double t){}
+	public void send(Engine engine, Message message, Actor actor) {
+		if (message.sending) {
+			return;
+		}
+		message.sending = true;
+		message.actor = actor;
+		engine.ready.add(message);
+	}
 
-inline void send(engine*e, chan*c, proc*p)
-{
-	if (c->sending) return;
-	c->sending = true;	c->p = p;
-	e->ready.push(c);
-}
+	public boolean access(Message message, Actor actor) {
+		return message.actor == actor && !message.sending;
+	}
 
-inline bool access(chan*c, proc*p)
-{
-	return c->p == p && !c->sending;
-}
-
-inline void run(engine*e, int n = 1)
-{
-	while (!e->ready.empty()){
-		chan*c = e->ready.front(); e->ready.pop();
-		c->sending = false;
-		c->p->recv(c, c->p);
+	public void run(Engine e) {
+		while (e.ready.size() != 0) {
+			Message c = e.ready.poll();
+			c.sending = false;
+			c.actor.recv(c, c.actor);
+		}
 	}
 }
-
-inline void stat(engine*e, double&T1, double&Tp, int&Pmax, double&Smax, int P, double&Sp){}
-*/
