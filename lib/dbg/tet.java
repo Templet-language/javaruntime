@@ -13,50 +13,44 @@
 /*  See the License for the specific language governing permissions and     */
 /*  limitations under the License.                                          */
 /*--------------------------------------------------------------------------*/
+package dbg;
 
-/* initial C++ runtime
+import java.util.Queue;
+import java.util.LinkedList;
 
-struct engine;
-struct proc;
-struct chan;
+public class Tet {
+	class Engine {
+		Queue<Message> ready = new LinkedList<Message>();
+	}
 
-struct engine{
-	std::vector<chan*> ready;
-};
+	abstract class Actor {
+		abstract void recv(Message message, Actor actor);
+	}
 
-struct proc{
-	void(*recv)(chan*, proc*);
-};
+	class Message {
+		Actor actor;
+		boolean sending;
 
-struct chan{
-	proc*p;
-	bool sending;
-};
+		public void send(Engine engine, Message message, Actor actor) {
+			if (message.sending) {
+				return;
+			}
+			message.sending = true;
+			message.actor = actor;
+			engine.ready.add(message);
+		}
 
-inline void duration(engine*e, double t){}
+		public boolean access(Message message, Actor actor) {
+			return message.actor == actor && !message.sending;
+		}
+	}
 
-inline void send(engine*e, chan*c, proc*p)
-{
-	if (c->sending) return;
-	c->sending = true;
-	c->p = p;
-	e->ready.push_back(c);
-}
 
-inline bool access(chan*c, proc*p)
-{
-	return c->p == p && !c->sending;
-}
-
-inline void run(engine*e, int n = 1)
-{
-	size_t rsize;
-	while (rsize = e->ready.size()){
-		int n = rand() % rsize;	auto it = e->ready.begin() + n;
-		chan*c = *it;	e->ready.erase(it); c->sending = false;
-		c->p->recv(c, c->p);
+	public void run(Engine engine) {
+		while (engine.ready.size()>0) {
+			Message message = engine.ready.poll();
+			message.sending = false;
+			message.actor.recv(message, message.actor);
+		}
 	}
 }
-
-inline void stat(engine*e, double&T1, double&Tp, int&Pmax, double&Smax, int P, double&Sp){}
-*/
