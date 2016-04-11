@@ -47,10 +47,16 @@ public class Tet {
 
 
 	public void run(Engine engine) {
-		while (engine.ready.size()>0) {
-			Message message = engine.ready.poll();
+		final int RAND_MAX = 32767;
+		long rsize;
+		rsize = engine.ready.size()
+		while (rsize > 0) {
+			int n = (int) ((Math.random() * RAND_MAX) % rsize);
+			//TODO поменять структуру, для взятия случайного элемента из очереди
+			Message message = (Message) engine.ready.poll();
 			message.sending = false;
 			message.actor.recv(message, message.actor);
+			rsize = engine.ready.size();
 		}
 	}
 }
