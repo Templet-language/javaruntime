@@ -14,77 +14,85 @@
 /*  limitations under the License.                                          */
 /*--------------------------------------------------------------------------*/
 
-/* initial C++ runtime
+package par;
 
-struct engine;
-struct proc;
-struct chan;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.Condition;
+import java.util.Queue;
 
-struct engine{
-	volatile int active;
-	std::mutex mtx;
-	std::condition_variable cv;
-	std::queue<chan*> ready;
-};
+public class tet {
+	class Engine {
+		private int active;
+		private Lock mtx;
+		private Condition cv;
+		private Queue<Message> ready;
+	}
 
-struct proc{
-	std::mutex mtx;
-	void(*recv)(chan*, proc*);
-};
+	abstract class Actor {
+		private Lock mtx;
+		public abstract void recv (Message message,Actor actor);
+	}
 
-struct chan{
-	proc*p;
-	bool sending;
-};
+	class Message {
+		private Actor actor;
+		private boolean sending;
+	}
 
-inline void duration(engine*e, double t){}
-
-inline void send(engine*e, chan*c, proc*p)
-{
-	if (c->sending) return;
-	c->sending = true;	c->p = p;
-	std::unique_lock<std::mutex> lck(e->mtx);
-	e->ready.push(c);	e->cv.notify_one();
-}
-
-inline bool access(chan*c, proc*p)
-{
-	return c->p == p && !c->sending;
-}
-
-inline void tfunc(engine*e)
-{
-	chan*c; proc*p;
-
-	for (;;){
+	public void send(Engine engine,Message message, Actor actor)
+	{
+		if (message.sending)
 		{
-			std::unique_lock<std::mutex> lck(e->mtx);
-			while (e->ready.empty()){
-				e->active--;
-				if (!e->active){ e->cv.notify_one(); return; }
-				e->cv.wait(lck);
-				e->active++;
-			}
-			c = e->ready.front();
-			e->ready.pop();
+			return;
 		}
-		p = c->p;
+		message.sending = true;
+		message.actor =actor;
+		//start of the critical section
+		engine.mtx.tryLock();
+		engine.ready.add(message);
+		engine.mtx.unlock();
+		//end of the critical section
+		engine.cv.notify();
+	}
+
+	public boolean access(Message message, Actor actor)
+	{
+		return message.actor == actor && !message.sending;
+	}
+
+	public void tfunc (Engine engine)
+	{
+		Message message;
+		Actor actor;
+
+		try {
+			for (;;) {
+				//start of the critical section
+				engine.mtx.tryLock();
+				while (engine.ready.isEmpty()) {
+					engine.active--;
+					if (!(engine.active == 0)) {
+						engine.cv.notify();
+						return;
+					}
+					engine.mtx.wait();
+					engine.active++;
+					engine.mtx.unlock();
+					//end of the critical section
+				}
+				message = engine.ready.poll(); //Retrieves and removes the head of this queue, or returns null if this queue is empty.
+
+				actor = message.actor;
+				//start of the critical section
+				actor.mtx.tryLock();
+				message.sending = false;
+				actor.recv(message, actor);
+				actor.mtx.unlock();
+				//end of the critical section
+			}
+		}
+		catch (InterruptedException interExc)
 		{
-			std::unique_lock<std::mutex> lck(p->mtx);
-			c->sending = false;
-			p->recv(c, p);
+			interExc.getMessage();
 		}
 	}
 }
-
-inline void run(engine*e, int n = 1)
-{
-	std::vector<std::thread> threads(n);
-	e->active = n;
-	for (int i = 0; i<n; i++) threads[i] = std::thread(tfunc, e);
-	for (auto& th : threads) th.join();
-}
-
-inline void stat(engine*e, double&T1, double&Tp, int&Pmax, double&Smax, int P, double&Sp){}
-
-*/
