@@ -14,121 +14,141 @@
 /*  limitations under the License.                                          */
 /*--------------------------------------------------------------------------*/
 
-/* initial C++ runtime
+package sim;
 
-struct engine;
-struct proc;
-struct chan;
 
-struct event{
-	double time;
-	enum{ CHAN, PROC0, PROC1 } type;
-	chan*c;
-	proc*p;
-};
+import sun.plugin2.message.Message;
 
-class cmp{ public: bool operator()(const event&t1, const event&t2){ return t1.time > t2.time; } };
+import java.util.LinkedList;
+import java.util.Queue;
 
-struct engine{
-	std::priority_queue<event, std::vector<event>, cmp> calendar;
-	double Tp;
-	double T1;
-	int Pmax;
-};
+public class tet {
+	static class Event {
+		double time;
 
-struct proc{
-	bool lck;
-	std::queue<chan*> ready;
-	void(*recv)(chan*, proc*);
-};
-
-struct chan{
-	proc*p;
-	bool sending;
-};
-
-inline void duration(engine*e, double t)
-{
-	e->T1 += t;
-	e->Tp += t;
-}
-
-inline void send(engine*e, chan*c, proc*p)
-{
-	if (c->sending) return;
-	c->sending = true;	c->p = p;
-
-	event ev;
-	ev.time = e->Tp; ev.type = event::CHAN; ev.c = c;
-	e->calendar.push(ev);
-}
-
-inline bool access(chan*c, proc*p)
-{
-	return c->p == p && !c->sending;
-}
-
-inline void run(engine*e, int n = 1)
-{
-	proc*p = 0; chan*c = 0;
-	double Tcur = 0.0, Tprev = 0.0;
-	int Pcur = 0, Pmax = 0;
-
-	while (!e->calendar.empty()){
-		event ev;
-		ev = e->calendar.top();	e->calendar.pop();
-
-		Tcur = ev.time;
-		if (Tcur - Tprev > 0 && Pcur > Pmax) Pmax = Pcur;
-		Tprev = Tcur;
-
-		switch (ev.type){
-		case event::CHAN:
-		{
-			p = ev.c->p;
-			if (!p->lck && p->ready.empty()){
-				ev.p = p; ev.type = event::PROC0;
-				e->calendar.push(ev);
-			}
-			p->ready.push(ev.c);
+		enum Type {
+			CHAN, PROC0, PROC1
 		}
-		break;
 
-		case event::PROC0:
-		{
-			p = ev.p;
-			c = p->ready.front(); p->ready.pop();
-			c->sending = false;
+		Type type;
+		Message message;
+		Actor actor;
+	}
 
-			p->lck = true; Pcur++;
-
-			e->Tp = Tcur; p->recv(c, p); Tcur = e->Tp;
-
-			ev.time = Tcur; ev.type = event::PROC1;
-			e->calendar.push(ev);
-		}
-		break;
-
-		case event::PROC1:
-		{
-			p = ev.p;
-			if (!p->ready.empty()){
-				ev.type = event::PROC0;
-				e->calendar.push(ev);
-			}
-			p->lck = false; Pcur--;
-		}
+	class Comparator {
+		public boolean compare(Event event1, Event event2) {
+			return event1.time > event2.time;
 		}
 	}
-	e->Tp = Tcur; e->Pmax = Pmax;
-}
 
-inline void stat(engine*e, double&T1, double&Tp, int&Pmax, double&Smax, int P, double&Sp)
-{
-	T1 = e->T1; Tp = e->Tp; Pmax = e->Pmax;
-	Smax = T1 / Tp;
-	double alfa = (1 - Smax / Pmax) / (Smax - Smax / Pmax);
-	Sp = (P > Pmax) ? Smax : 1 / (alfa + (1 - alfa) / P);
-}
+	/*class QueueTriple{
+        Event event;
+		Queue<Event> eventQueue;
+		Comparator cmp;
+	}*/
 
-*/
+	class Engine {
+		Queue<Event> calendar;
+		double Tp;
+		double T1;
+		int Pmax;
+	}
+
+	abstract class Actor {
+		boolean lock;
+		Queue<Message> ready = new LinkedList<Message>();
+
+		abstract void recv(Message message, Actor actor);
+	}
+
+	class Message {
+		Actor actor;
+		boolean sending;
+
+		public void duration(Engine engine, double t) {
+			engine.T1 += t;
+			engine.Tp += t;
+		}
+
+		public void send(Engine engine, Message message, Actor actor) {
+			if (message.sending) {
+				return;
+			}
+			message.sending = true;
+			message.actor = actor;
+			Event event = new Event();
+			event.time = engine.Tp;
+			event.type = Event.Type.CHAN;
+			event.message = message;
+			engine.calendar.add(event);
+		}
+
+		public boolean access(Message message, Actor actor) {
+			return message.actor == actor && !message.sending;
+		}
+	}
+
+	public void run(Engine engine) {
+		int n = 1;
+		Actor actor = null;
+		Message message = null;
+		double Tcur = 0.0, Tprev = 0.0;
+		int Pcur = 0, Pmax = 0;
+		while (!engine.calendar.isEmpty()) {
+			Event event;
+			event = engine.calendar.poll();
+			Tcur = event.time;
+			if (Tcur - Tprev > 0 && Pcur > Pmax) {
+				Pmax = Pcur;
+			}
+			Tprev = Tcur;
+			switch (event.type) {
+				case CHAN: {
+					actor = event.message.actor;
+					if (!actor.lock && actor.ready.isEmpty()) {
+						event.actor = actor;
+						event.type = Event.Type.PROC0;
+						engine.calendar.add(event);
+					}
+					actor.ready.add(event.message);
+				}
+				break;
+				case PROC0: {
+					actor = event.actor;
+					message = actor.ready.poll();
+					message.sending = false;
+					actor.lock = true;
+					Pcur++;
+					engine.Tp = Tcur;
+					actor.recv(message, actor);
+					Tcur = engine.Tp;
+					event.time = Tcur;
+					event.type = Event.Type.PROC1;
+					engine.calendar.add(event);
+				}
+				break;
+				case PROC1: {
+					actor = event.actor;
+					if (!actor.ready.isEmpty()) {
+						event.type = Event.Type.PROC0;
+						engine.calendar.add(event);
+					}
+					actor.lock = false;
+					Pcur--;
+				}
+				break;
+			}
+		}
+		engine.Tp = Tcur;
+		engine.Pmax = Pmax;
+	}
+
+	void stat(Engine engine, double T1, double Tp, int Pmax, double Smax, int P, double Sp){
+		T1 = engine.T1;
+		Tp = engine.Tp;
+		Pmax = engine.Pmax;
+		Smax = T1/Tp;
+		double alpha = (1-Smax/Pmax)/(Smax - Smax/Pmax);
+		Sp=(P>Pmax)?Smax:1/(alpha+(1+alpha)/P);
+	}
+}
